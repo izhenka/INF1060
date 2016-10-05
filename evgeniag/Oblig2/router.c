@@ -8,6 +8,7 @@ struct router {
   char* producer;
 };
 
+
 void router_pretty_print(struct router* r);
 void print_binary(char num);
 char* check_flag_bit(char flag, int bit_pos);
@@ -17,6 +18,7 @@ char* str_boolean(int boolean);
 void router_modify_flag(struct router* r, int bit_pos);
 int router_increase_modify_number(struct router* r);
 struct router* router_init(void);
+
 
 
 struct router* router_init(void){
@@ -101,7 +103,6 @@ void router_modify_flag(struct router* r, int bit_pos){
 void print_binary(char num)
 {
   int pos = (sizeof(char) * 8) - 1;
-  //printf("%10d: ", num);
 
   for (int i = 0; i < (int)(sizeof(char) * 8); i++) {
     char c = num & (1 << pos) ? '1' : '0';

@@ -18,5 +18,8 @@ run10:
 run100:
 		./all 100router.dat
 
+runres:
+		./all result.dat
+
 clean:
 	rm -f router main

@@ -1,11 +1,14 @@
 
 #include <stdio.h>
+#include <string.h>
 #include "router.h"
 
 void commando_loop(void);
 void print_router_info(void);
 void modify_flag(void);
+void modify_producer(void);
 struct router* get_router_from_user();
+void write_to_file(char* filename);
 
 struct router** g_map;
 int g_num_routers;
@@ -18,16 +21,16 @@ int main(int argc, char const *argv[]) {
     return -1;
   }
 
-  FILE *fil = fopen(argv[1], "r");
-  if (fil == NULL) {
+  FILE *file = fopen(argv[1], "r");
+  if (file == NULL) {
     fprintf(stderr, "Couldn't open file: %s\n", argv[1]);
     return -1;
   }
 
 
-  fread(&g_num_routers, sizeof(g_num_routers), 1, fil);
+  fread(&g_num_routers, sizeof(g_num_routers), 1, file);
   printf("num_routers: %d\n", g_num_routers);
-  fgetc(fil); //skipping '/n'
+  fgetc(file); //skipping '/n'
 
 
   g_map = calloc(sizeof(struct router*), g_num_routers);
@@ -36,18 +39,20 @@ int main(int argc, char const *argv[]) {
 
     struct router* r = router_init();
 
-    fread(&(r->id), sizeof(r->id), 1, fil);
-    fread(&(r->flag), sizeof(r->flag), 1, fil);
+    fread(&(r->id), sizeof(r->id), 1, file);
+    fread(&(r->flag), sizeof(r->flag), 1, file);
     //producer
     unsigned char length_producer;
-    fread(&length_producer, sizeof(length_producer), 1, fil);
-    r->producer = malloc(sizeof(char)*(length_producer-1));
-    fread(r->producer, sizeof(char), length_producer-1, fil);
+    fread(&length_producer, sizeof(length_producer), 1, file);
+    r->producer = malloc(sizeof(char)*(length_producer));
+    fread(r->producer, sizeof(char), length_producer-1, file); //without '\0' in file
 
     g_map[r->id] = r;
 
-    fgetc(fil); //skipping '/n'
+    fgetc(file); //skipping '/n'
   };
+  fclose(file);
+
 
   printf("g_map:\n");
   for(int i = 0; i < g_num_routers; i++) {
@@ -56,12 +61,44 @@ int main(int argc, char const *argv[]) {
 
 
   commando_loop();
-  //TODO free(r);
 
-  fclose(fil);
+  write_to_file("result.dat");
+
+  //TODO free(r);
   return 0;
 }
 
+
+void write_to_file(char* filename){
+
+  FILE *file = fopen(filename, "w+");
+  if (file == NULL) {
+    fprintf(stderr, "Couldn't open file: %s\n", filename);
+    return;
+  }
+
+  char new_line = '\n';
+  fwrite(&g_num_routers, sizeof(int), 1, file);
+  fwrite(&new_line, sizeof(char), 1, file);
+
+
+  for(int i = 0; i < g_num_routers; i++) {
+
+    struct router* r = g_map[i];
+
+    fwrite(&(r->id), sizeof(r->id), 1, file);
+    fwrite(&(r->flag), sizeof(r->flag), 1, file);
+    //producer
+    unsigned char length_producer = strlen(r->producer)+1;
+    fwrite(&length_producer, sizeof(length_producer), 1, file);
+    fwrite(r->producer, sizeof(char), length_producer-1, file); //cutting '\0' in file
+    fwrite(&new_line, sizeof(char), 1, file);
+
+  };
+
+  fclose(file);
+
+}
 
 void commando_loop(void){
 
@@ -83,7 +120,7 @@ void commando_loop(void){
     switch (res) {
       case 1: print_router_info(); break;
       case 2: modify_flag(); break;
-      case 3: printf("3--\n"); break;
+      case 3: modify_producer(); break;
       case 4: printf("4--\n"); break;
       case 5: printf("5--\n"); break;
       case 6: exit = 1; break;
@@ -147,5 +184,19 @@ void modify_flag(void){
   } else {
     printf("Ugyldig kommado!\n");
   }
+
+}
+
+void modify_producer(void){
+  struct router* r = get_router_from_user();
+  if (r == NULL){
+      return;
+  }
+
+  printf("\nSkriv inn ny produsent\\model:");
+  char res_s[256];
+  fgets(res_s, 256, stdin);
+  printf("\nTakk for det og fuck you");
+
 
 }
