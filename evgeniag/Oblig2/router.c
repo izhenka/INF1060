@@ -8,11 +8,15 @@ struct router {
   char* producer;
 };
 
+void router_pretty_print(struct router* r);
 void print_binary(char num);
 char* check_flag_bit(char flag, int bit_pos);
 int router_get_modify_number(struct router* r);
 int bit_is_set(char x, int bit_pos);
 char* str_boolean(int boolean);
+void router_modify_flag(struct router* r, int bit_pos);
+int router_increase_modify_number(struct router* r);
+struct router* router_init(void);
 
 
 struct router* router_init(void){
@@ -21,7 +25,7 @@ struct router* router_init(void){
 
 void router_pretty_print(struct router* r){
 
-  printf("Router%d: %s\tflags:", r->id, r->producer);
+  printf("\nRouter%d: %s\tflags:", r->id, r->producer);
   print_binary(r->flag);
 
   /*
@@ -32,7 +36,7 @@ void router_pretty_print(struct router* r){
   4:7 Modify number
   */
 
-  printf("Active: \t%s\nWireless: \t%s\nSupport 5GHz: \t%s\nUnused: \t%s\n",
+  printf("Active: \t%s\nWireless: \t%s\nSupports 5GHz: \t%s\nUnused: \t%s\n",
   check_flag_bit(r->flag, 0), check_flag_bit(r->flag, 1), check_flag_bit(r->flag, 2), check_flag_bit(r->flag, 3));
 
   printf("Modify number: \t%d\n\n", router_get_modify_number(r));
@@ -48,7 +52,21 @@ int bit_is_set(char x, int bit_pos){
 
 int router_get_modify_number(struct router* r){
   char mask4_7 = 0xf0;
-   return (r->flag & (mask4_7))>>4;
+  return (r->flag & (mask4_7))>>4;
+}
+
+int router_increase_modify_number(struct router* r){
+  char number = router_get_modify_number(r);
+  if (number==15){
+    printf("Router parameters can't be modified more then 15 times!");
+    return 0;
+  }
+
+  char mask0_3 = 0x0f;
+  number += 1;
+  r->flag = (number<<4) | (r->flag & mask0_3);
+
+  return 1;
 }
 
 char* str_boolean(int boolean){
@@ -71,18 +89,26 @@ void router_set_producer(struct router* r, char* producer){
   r->producer = producer;
 };
 
+void router_modify_flag(struct router* r, int bit_pos){
+  if (router_increase_modify_number(r)){
+    char mask = 1<<bit_pos;
+    r->flag = r->flag ^ mask;
+    printf("Parameter[%d] was succefully modified to %s\n", bit_pos, check_flag_bit(r->flag, bit_pos));
+  }
+};
+
 
 void print_binary(char num)
 {
-	int pos = (sizeof(char) * 8) - 1;
-	//printf("%10d: ", num);
+  int pos = (sizeof(char) * 8) - 1;
+  //printf("%10d: ", num);
 
-	for (int i = 0; i < (int)(sizeof(char) * 8); i++) {
-		char c = num & (1 << pos) ? '1' : '0';
-		putchar(c);
-		if (!((i + 1) % 8))
-			putchar(' ');
-		pos--;
-	}
-	putchar('\n');
+  for (int i = 0; i < (int)(sizeof(char) * 8); i++) {
+    char c = num & (1 << pos) ? '1' : '0';
+    putchar(c);
+    if (!((i + 1) % 8))
+    putchar(' ');
+    pos--;
+  }
+  putchar('\n');
 }

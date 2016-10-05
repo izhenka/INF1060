@@ -4,12 +4,16 @@
 
 struct router {
   unsigned char id;
-  char flag;
+  unsigned char flag;
   char* producer;
 };
 
 struct router* router_init(void);
 void router_pretty_print(struct router* r);
-void router_set_id(struct router* r, unsigned char id);
-void router_set_flag(struct router* r, char flag);
-void router_set_producer(struct router* r, char* producer);
+void print_binary(char num);
+char* check_flag_bit(char flag, int bit_pos);
+int router_get_modify_number(struct router* r);
+int bit_is_set(char x, int bit_pos);
+char* str_boolean(int boolean);
+void router_modify_flag(struct router* r, int bit_pos);
+int router_increase_modify_number(struct router* r);
