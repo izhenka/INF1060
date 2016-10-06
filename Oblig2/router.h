@@ -19,3 +19,5 @@ void router_modify_flag(struct router* r, int bit_pos);
 int router_increase_modify_number(struct router* r);
 void router_set_producer(struct router* r, char* producer);
 void router_set_id(struct router* r, unsigned char id);
+int router_deacrease_modify_number(struct router* r);
+void router_pretty_print_flags(struct router* r);

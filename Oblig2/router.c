@@ -21,6 +21,8 @@ int router_increase_modify_number(struct router* r);
 struct router* router_init(void);
 void router_set_producer(struct router* r, char* producer);
 void router_set_id(struct router* r, unsigned char id);
+int router_deacrease_modify_number(struct router* r);
+void router_pretty_print_flags(struct router* r);
 
 
 struct router* router_init(void){
@@ -31,7 +33,12 @@ void router_pretty_print(struct router* r){
 
   printf("\nRouter%d: %s\tflags:", r->id, r->producer);
   print_binary(r->flag);
+  router_pretty_print_flags(r);
+  printf("Modify number: \t%d\n\n", router_get_modify_number(r));
 
+};
+
+void router_pretty_print_flags(struct router* r){
   /*
   0 Aktive
   1 Wireless
@@ -42,10 +49,7 @@ void router_pretty_print(struct router* r){
 
   printf("Active: \t%s\nWireless: \t%s\nSupports 5GHz: \t%s\nUnused: \t%s\n",
   check_flag_bit(r->flag, 0), check_flag_bit(r->flag, 1), check_flag_bit(r->flag, 2), check_flag_bit(r->flag, 3));
-
-  printf("Modify number: \t%d\n\n", router_get_modify_number(r));
-
-};
+}
 
 int bit_is_set(char x, int bit_pos){
 
@@ -68,6 +72,19 @@ int router_increase_modify_number(struct router* r){
 
   char mask0_3 = 0x0f;
   number += 1;
+  r->flag = (number<<4) | (r->flag & mask0_3);
+
+  return 1;
+}
+
+int router_deacrease_modify_number(struct router* r){
+  char number = router_get_modify_number(r);
+  if (number==0){
+    return 0;
+  }
+
+  char mask0_3 = 0x0f;
+  number -= 1;
   r->flag = (number<<4) | (r->flag & mask0_3);
 
   return 1;

@@ -5,9 +5,9 @@
 
 void commando_loop(void);
 void print_router_info(void);
-void modify_flag(void);
-void modify_producer(struct router* r);
-struct router* get_router_from_user(int* id);
+void modify_flag();
+void modify_producer();
+struct router* get_router_from_user();
 void write_to_file(char* filename);
 void strip_newline(char *s);
 void check_newline(FILE *fp);
@@ -18,6 +18,8 @@ void free_all(void);
 void read_data_from_file(FILE *file);
 int get_num_routers(void);
 struct router* find_router(int* id);
+void set_flag(struct router* r, int* exit);
+void set_producer(struct router* r);
 
 #define MAX_ROUTERS 256
 struct router* g_map[MAX_ROUTERS];
@@ -129,7 +131,7 @@ void commando_loop(void){
     switch (res) {
       case 1: print_router_info(); break;
       case 2: modify_flag(); break;
-      case 3: modify_producer(NULL); break;
+      case 3: modify_producer(); break;
       case 4: new_router(); break;
       case 5: delete_router(); break;
       case 6: exit = 1; break;
@@ -142,7 +144,7 @@ void commando_loop(void){
 void new_router(void){
   printf("Creating new router.\n");
   int id;
-  struct router* r = get_router_from_user(&id);
+  struct router* r = find_router(&id);
   if (r != NULL){
     printf("Router with id %d already exists!\n", r->id);
     return;
@@ -151,16 +153,23 @@ void new_router(void){
   r = router_init();
   router_set_id(r, id);
   g_map[id] = r;
-  modify_producer(r);
+  set_producer(r);
+  router_deacrease_modify_number(r);
 
 
+  printf("Setting parameters for new router.\n\n");
+  int exit = 0;
+  while (exit == 0) {
+    set_flag(r, &exit);
+    router_deacrease_modify_number(r);
+  }
 
+  printf("New router was succesfully created!\n");
 
 }
 
 void delete_router(void){
-  int id;
-  struct router* r = get_router_from_user(&id);
+  struct router* r = get_router_from_user();
   if (r != NULL){
     unsigned char id = r->id;
     free(g_map[id]);
@@ -170,8 +179,7 @@ void delete_router(void){
 }
 
 void print_router_info(void){
-  int id;
-  struct router* r = get_router_from_user(&id);
+  struct router* r = get_router_from_user();
   if (r != NULL){
       router_pretty_print(r);
   }
@@ -206,25 +214,15 @@ int get_num_routers(void){
   return res;
 }
 
-struct router* get_router_from_user(int* id){
-  printf("\nTast ruter id:");
-  char res_s[256];
-  fgets(res_s, 256, stdin);
-  int res = (int) strtol(res_s, NULL, 10);
+struct router* get_router_from_user(){
 
-  if (res>MAX_ROUTERS){
-    fprintf(stdout, "Maks id er %d\n", (MAX_ROUTERS-1));
-    return NULL;
-  }
+  int id;
+  struct router* r = find_router(&id);
 
-  struct router* r = g_map[res];
   if (r == NULL){
-    fprintf(stdout, "Finnes ikke ruter med id %d\n", res);
+    fprintf(stdout, "Finnes ikke ruter med id %d\n", id);
   }
-
-  *id = res;
   return r;
-
 }
 
 struct router* find_router(int* id){
@@ -245,13 +243,15 @@ struct router* find_router(int* id){
 
 
 
-void modify_flag(void){
-  int id;
-  struct router* r = get_router_from_user(&id);
+void modify_flag(){
+
+  struct router* r = get_router_from_user();
+  printf("router %d\n", r->id);
   if (r == NULL){
-      return;
+    return;
   }
-  router_pretty_print(r);
+
+  router_pretty_print_flags(r);
 
   printf("\nVelg parameter:\n");
   printf("\t1.Active\n");
@@ -274,15 +274,56 @@ void modify_flag(void){
 
 }
 
-void modify_producer(struct router* r){
+void modify_producer(){
+
+  struct router* r = get_router_from_user();
+  if (r == NULL){
+    return;
+  }
+
+  printf("\nSkriv inn ny produsent\\model:");
+  char res_s[256];
+  fgets(res_s, 256, stdin);
+  strip_newline(res_s);
+  router_set_producer(r, res_s);
+
+}
+
+void set_flag(struct router* r, int* exit){
 
   if (r == NULL){
-    int id;
-    struct router* r = get_router_from_user(&id);
-    if (r == NULL){
-      return;
-    }
-  };
+    return;
+  }
+
+  router_pretty_print_flags(r);
+
+  printf("\nVelg parameter:\n");
+  printf("\t1.Active\n");
+  printf("\t2.Wireless\n");
+  printf("\t3.Supports 5GHz\n");
+  printf("\t4.Unused\n");
+  printf("\t5.--exit\n");
+
+  char res_s[256];
+  fgets(res_s, 256, stdin);
+  int res = (int) strtol(res_s, NULL, 10);
+
+  if (res > 0 && res < 5){
+    router_modify_flag(r, res-1);
+  } else if (res == 5){
+    *exit = 1;
+    return;
+  } else {
+    printf("Ugyldig kommado!\n");
+  }
+
+}
+
+void set_producer(struct router* r){
+
+  if (r == NULL){
+    return;
+  }
 
   printf("\nSkriv inn ny produsent\\model:");
   char res_s[256];
