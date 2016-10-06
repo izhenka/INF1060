@@ -6,12 +6,21 @@
 void commando_loop(void);
 void print_router_info(void);
 void modify_flag(void);
-void modify_producer(void);
-struct router* get_router_from_user();
+void modify_producer(struct router* r);
+struct router* get_router_from_user(int* id);
 void write_to_file(char* filename);
+void strip_newline(char *s);
+void check_newline(FILE *fp);
+void new_router(void);
+void delete_router(void);
+void print_all(void);
+void free_all(void);
+void read_data_from_file(FILE *file);
+int get_num_routers(void);
+struct router* find_router(int* id);
 
-struct router** g_map;
-int g_num_routers;
+#define MAX_ROUTERS 256
+struct router* g_map[MAX_ROUTERS];
 
 
 int main(int argc, char const *argv[]) {
@@ -27,15 +36,25 @@ int main(int argc, char const *argv[]) {
     return -1;
   }
 
+  read_data_from_file(file);
+  fclose(file);
 
-  fread(&g_num_routers, sizeof(g_num_routers), 1, file);
-  printf("num_routers: %d\n", g_num_routers);
-  fgetc(file); //skipping '/n'
+  commando_loop();
+  write_to_file("result.dat");
+  free_all();
+
+  return 0;
+}
 
 
-  g_map = calloc(sizeof(struct router*), g_num_routers);
+void read_data_from_file(FILE *file){
 
-  for(int i = 0; i < g_num_routers; i++) {
+  int num_routers;
+  fread(&num_routers, sizeof(int), 1, file);
+  printf("num_routers: %d\n", num_routers);
+  check_newline(file);
+
+  for(int i = 0; i < num_routers; i++) {
 
     struct router* r = router_init();
 
@@ -44,30 +63,18 @@ int main(int argc, char const *argv[]) {
     //producer
     unsigned char length_producer;
     fread(&length_producer, sizeof(length_producer), 1, file);
-    r->producer = malloc(sizeof(char)*(length_producer));
-    fread(r->producer, sizeof(char), length_producer-1, file); //without '\0' in file
+    char producer[length_producer];
+    memset(producer, 0, length_producer);
+    fread(producer, sizeof(char), length_producer-1, file);
+    strcpy(r->producer, producer);
+    //strip_newline(r->producer);
 
     g_map[r->id] = r;
 
-    fgetc(file); //skipping '/n'
+    check_newline(file);
   };
-  fclose(file);
 
-
-  printf("g_map:\n");
-  for(int i = 0; i < g_num_routers; i++) {
-    router_pretty_print(g_map[i]);
-  }
-
-
-  commando_loop();
-
-  write_to_file("result.dat");
-
-  //TODO free(r);
-  return 0;
 }
-
 
 void write_to_file(char* filename){
 
@@ -78,13 +85,16 @@ void write_to_file(char* filename){
   }
 
   char new_line = '\n';
-  fwrite(&g_num_routers, sizeof(int), 1, file);
+  int num_routers = get_num_routers();
+  fwrite(&num_routers, sizeof(int), 1, file);
   fwrite(&new_line, sizeof(char), 1, file);
 
-
-  for(int i = 0; i < g_num_routers; i++) {
+  for(int i = 0; i < MAX_ROUTERS; i++) {
 
     struct router* r = g_map[i];
+    if (r == NULL){
+      continue;
+    }
 
     fwrite(&(r->id), sizeof(r->id), 1, file);
     fwrite(&(r->flag), sizeof(r->flag), 1, file);
@@ -97,7 +107,6 @@ void write_to_file(char* filename){
   };
 
   fclose(file);
-
 }
 
 void commando_loop(void){
@@ -120,33 +129,91 @@ void commando_loop(void){
     switch (res) {
       case 1: print_router_info(); break;
       case 2: modify_flag(); break;
-      case 3: modify_producer(); break;
-      case 4: printf("4--\n"); break;
-      case 5: printf("5--\n"); break;
+      case 3: modify_producer(NULL); break;
+      case 4: new_router(); break;
+      case 5: delete_router(); break;
       case 6: exit = 1; break;
+      case 7: print_all(); break;
       default: printf("Ugyldig kommado!\n");
     }
-
-
   }
+}
+
+void new_router(void){
+  printf("Creating new router.\n");
+  int id;
+  struct router* r = get_router_from_user(&id);
+  if (r != NULL){
+    printf("Router with id %d already exists!\n", r->id);
+    return;
+  }
+
+  r = router_init();
+  router_set_id(r, id);
+  g_map[id] = r;
+  modify_producer(r);
+
+
+
 
 }
 
+void delete_router(void){
+  int id;
+  struct router* r = get_router_from_user(&id);
+  if (r != NULL){
+    unsigned char id = r->id;
+    free(g_map[id]);
+    g_map[id] = NULL;
+    printf("Router %d is deleted!\n", id);
+  }
+}
+
 void print_router_info(void){
-  struct router* r = get_router_from_user();
+  int id;
+  struct router* r = get_router_from_user(&id);
   if (r != NULL){
       router_pretty_print(r);
   }
 }
 
-struct router* get_router_from_user(){
+void print_all(void){
+  printf("g_map:\n");
+  for(int i = 0; i < MAX_ROUTERS; i++) {
+    if (g_map[i] == NULL){
+      continue;
+    }
+    router_pretty_print(g_map[i]);
+  }
+}
+
+void free_all(void){
+  for(int i = 0; i < MAX_ROUTERS; i++) {
+    if (g_map[i] == NULL){
+      continue;
+    }
+    free(g_map[i]);
+  }
+}
+
+int get_num_routers(void){
+  int res = 0;
+  for(int i = 0; i < MAX_ROUTERS; i++) {
+    if (g_map[i] != NULL){
+      res+=1;
+    }
+  }
+  return res;
+}
+
+struct router* get_router_from_user(int* id){
   printf("\nTast ruter id:");
   char res_s[256];
   fgets(res_s, 256, stdin);
   int res = (int) strtol(res_s, NULL, 10);
 
-  if (res>g_num_routers){
-    fprintf(stdout, "Maks id er %d\n", (g_num_routers-1));
+  if (res>MAX_ROUTERS){
+    fprintf(stdout, "Maks id er %d\n", (MAX_ROUTERS-1));
     return NULL;
   }
 
@@ -155,12 +222,32 @@ struct router* get_router_from_user(){
     fprintf(stdout, "Finnes ikke ruter med id %d\n", res);
   }
 
+  *id = res;
   return r;
 
 }
 
+struct router* find_router(int* id){
+  printf("\nTast ruter id:");
+  char res_s[256];
+  fgets(res_s, 256, stdin);
+  int res = (int) strtol(res_s, NULL, 10);
+
+  if (res>MAX_ROUTERS){
+    fprintf(stdout, "Maks id er %d\n", (MAX_ROUTERS-1));
+    return NULL;
+  }
+
+  *id = res;
+  return g_map[res];
+
+}
+
+
+
 void modify_flag(void){
-  struct router* r = get_router_from_user();
+  int id;
+  struct router* r = get_router_from_user(&id);
   if (r == NULL){
       return;
   }
@@ -187,16 +274,36 @@ void modify_flag(void){
 
 }
 
-void modify_producer(void){
-  struct router* r = get_router_from_user();
+void modify_producer(struct router* r){
+
   if (r == NULL){
+    int id;
+    struct router* r = get_router_from_user(&id);
+    if (r == NULL){
       return;
-  }
+    }
+  };
 
   printf("\nSkriv inn ny produsent\\model:");
   char res_s[256];
   fgets(res_s, 256, stdin);
-  printf("\nTakk for det og fuck you");
+  strip_newline(res_s);
+  router_set_producer(r, res_s);
 
+}
 
+void strip_newline(char* s){
+	char* ptr = strchr(s, '\n');
+	if (ptr != NULL)
+		*ptr = '\0';
+}
+
+void check_newline(FILE *fp){
+	/* newline = '\n' = 0xa = 10 */
+	int c = fgetc(fp);
+	if (c != '\n') {
+		fprintf(stderr, "Expected newline, got 0x%x (%d)\n", c, c);
+		fclose(fp);
+		exit(EXIT_FAILURE);
+	}
 }

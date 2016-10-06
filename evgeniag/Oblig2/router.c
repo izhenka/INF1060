@@ -1,11 +1,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 struct router {
   unsigned char id;
   unsigned char flag;
-  char* producer;
+  char producer[256];
 };
 
 
@@ -18,11 +19,12 @@ char* str_boolean(int boolean);
 void router_modify_flag(struct router* r, int bit_pos);
 int router_increase_modify_number(struct router* r);
 struct router* router_init(void);
-
+void router_set_producer(struct router* r, char* producer);
+void router_set_id(struct router* r, unsigned char id);
 
 
 struct router* router_init(void){
-  return calloc(1, sizeof(struct router));
+  return malloc(sizeof(struct router));
 };
 
 void router_pretty_print(struct router* r){
@@ -88,7 +90,10 @@ void router_set_flag(struct router* r, unsigned char flag){
 };
 
 void router_set_producer(struct router* r, char* producer){
-  r->producer = producer;
+  if (router_increase_modify_number(r)){
+    memmove(r->producer, producer, strlen(producer) + 1);
+    printf("Producer was succefully modified to %s\n", r->producer);
+  }
 };
 
 void router_modify_flag(struct router* r, int bit_pos){
@@ -99,9 +104,7 @@ void router_modify_flag(struct router* r, int bit_pos){
   }
 };
 
-
-void print_binary(char num)
-{
+void print_binary(char num){
   int pos = (sizeof(char) * 8) - 1;
 
   for (int i = 0; i < (int)(sizeof(char) * 8); i++) {

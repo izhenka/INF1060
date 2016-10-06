@@ -5,7 +5,7 @@
 struct router {
   unsigned char id;
   unsigned char flag;
-  char* producer;
+  char producer[256];
 };
 
 struct router* router_init(void);
@@ -17,3 +17,5 @@ int bit_is_set(char x, int bit_pos);
 char* str_boolean(int boolean);
 void router_modify_flag(struct router* r, int bit_pos);
 int router_increase_modify_number(struct router* r);
+void router_set_producer(struct router* r, char* producer);
+void router_set_id(struct router* r, unsigned char id);
