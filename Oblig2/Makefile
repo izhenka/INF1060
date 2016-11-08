@@ -1,6 +1,6 @@
 
 CC=gcc
-CFLAGS=-Wall -Wextra -std=c99
+CFLAGS= -Wall -Wextra -std=c99 -Wshadow
 
 
 all: main.c router.c

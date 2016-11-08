@@ -1,15 +1,13 @@
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include "router.h"
+/*
 struct router {
   unsigned char id;
   unsigned char flag;
   char producer[256];
 };
-
-
 void router_pretty_print(struct router* r);
 void print_binary(char num);
 char* check_flag_bit(char flag, int bit_pos);
@@ -23,6 +21,7 @@ void router_set_producer(struct router* r, char* producer);
 void router_set_id(struct router* r, unsigned char id);
 int router_deacrease_modify_number(struct router* r);
 void router_pretty_print_flags(struct router* r);
+*/
 
 
 struct router* router_init(void){
