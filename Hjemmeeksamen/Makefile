@@ -11,7 +11,7 @@ server: server.c
 
 
 runs: server
-	./server haiku.job port
+	./server jobs/haiku.job port
 
 runc: klient
 	./klient ip port
