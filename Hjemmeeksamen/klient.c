@@ -1,4 +1,7 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 int main(int argc, char *argv[])
 {
@@ -14,12 +17,12 @@ int main(int argc, char *argv[])
   }
 
   if (pid == 0){ //barneprosess
-    printf("Message: %s\n", arg[1]);
-    return 42;
+    printf("Jeg er barn! Message: %s\n", argv[1]);
+    return 2;
   }else{
     int status;
     wait(&status);
-    printf("Child terminated with status %s\n", WEXITSTATUS(status));
+    printf("Child terminated with status %d\n", WEXITSTATUS(status));
   }
 
   return 0;
