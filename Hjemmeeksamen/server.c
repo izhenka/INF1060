@@ -1,4 +1,9 @@
 #include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <netinet/in.h>
 
 int read_next_job(FILE* file, char* work_type, unsigned char* message_len, char* message);
 
@@ -21,11 +26,23 @@ int main(int argc, char const *argv[]) {
   //if client connected
   char work_type;
   unsigned char message_len;
-  char message[256] = {0};
+  char message[256];
 
-  if (read_next_job(file, &work_type, &message_len, message) == -1){
-    //TODO send message to klient?
+  for (int i = 0; i<5; i++){
+    if (read_next_job(file, &work_type, &message_len, message) == -1){
+      //TODO send message to klient?
+      break;
+    }
   }
+
+
+  int my_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (my_socket == -1) {
+		perror("socket()");
+		return -1;
+	}
+
+  close(my_socket);
 
 
   fclose(file);
@@ -45,6 +62,7 @@ int read_next_job(FILE* file, char* work_type, unsigned char* message_len, char*
   fread(message_len, sizeof(unsigned char), 1, file);
   printf("message_len: %u\n", *message_len);
 
+  memset(message, '\0', 256);
   bytes_read = fread(message, sizeof(char), *message_len, file);
   printf("message: %s\n", message);
 
@@ -54,5 +72,4 @@ int read_next_job(FILE* file, char* work_type, unsigned char* message_len, char*
   }
 
   return 0;
-
 }
