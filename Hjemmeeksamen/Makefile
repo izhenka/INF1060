@@ -1,9 +1,9 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -std=gnu99 -g -Wshadow
 
-all: klient server
+all: client server
 
-klient: klient.c
+client: client.c
 	$(CC) $(CFLAGS) $^ -o $@
 
 server: server.c
@@ -13,5 +13,9 @@ server: server.c
 runs: server
 	./server haiku.job port
 
-runk: klient
-		./klient ip port
+runc: klient
+	./klient ip port
+
+
+clean:
+	rm -f server client
