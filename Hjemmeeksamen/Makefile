@@ -14,8 +14,9 @@ runs: server
 	./server jobs/haiku.job 5432
 
 runc: client
-	./client ip 5432
+	./client "37.191.141.137" 5432
 
 
 clean:
 	rm -f server client
+	rm -r client.dSYM server.dSYM

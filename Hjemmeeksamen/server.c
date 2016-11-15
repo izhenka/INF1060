@@ -49,9 +49,7 @@ int main(int argc, char const *argv[]) {
 		return -1;
   }
 
-
   //connections handling
-  //char* ip = "37.191.141.137";
   int sock = create_socket(port);
   if (sock == -1){
     exit(EXIT_FAILURE);
@@ -68,15 +66,17 @@ int main(int argc, char const *argv[]) {
     }
 
     ssize_t ret;
-    // char buf[256] = { 0 };
-  	// ret = recv(client_sock, buf, sizeof(buf) - 1, 0);
-    // if (ret == -1) {
-  	// 	perror("recv()");
-  	// 	close(client_sock);
-  	// 	continue;
-  	// } else {
-  	// 	printf("Message from client: %s\n", buf);
-  	// }
+    char buf[256] = { 0 };
+  	ret = recv(client_sock, buf, sizeof(buf) - 1, 0);
+    if (ret == 0) {
+    	printf("Client disconnected.\n");
+    }else if (ret == -1) {
+  		perror("recv()");
+  		close(client_sock);
+  		continue;
+  	} else {
+  		printf("Message from client: %s\n", buf);
+  	}
 
 
     char work_type;
@@ -85,7 +85,7 @@ int main(int argc, char const *argv[]) {
 
     if (read_next_job(file, &work_type, &message_len, message) == -1){
       //TODO send message to klient?
-      strcpy(message, "I'm tired of you, bye!");
+      strcpy(message, "I'm tired, bye! :*\n");
       running = 0;
     }
 
@@ -98,10 +98,6 @@ int main(int argc, char const *argv[]) {
 
     close(client_sock);
   }
-
-
-
-
 
 
   close(sock);
@@ -163,7 +159,7 @@ int create_socket(int port){
     close(sock);
     return -1;
   }
-  printf("Address id binded!\n");
+  printf("Address is binded!\n");
 
   //activate listening to connections
   if (listen(sock, SOMAXCONN) != 0) {
@@ -172,21 +168,6 @@ int create_socket(int port){
 		return -1;
 	}
   printf("Listening is on!\n");
-
-
-  /* FOR client
-  int ip_ret = inet_pton(AF_INET, ip, &server_addr.sin_addr.s_addr);
-  if (ip_ret != 1) {
-    if (ip_ret == 0) {
-      fprintf(stderr, "Invalid IP address: %s\n", ip);
-    } else {
-      perror("inet_pton()");
-    }
-    close(my_socket);
-    return -1;
-  }
-  printf("Sockaddr_in is set %u!\n", server_addr.sin_addr.s_addr);
-  */
 
   return sock;
 
@@ -197,7 +178,7 @@ int create_socket(int port){
 */
 void terminate(int signum)
 {
-	printf("Terminating server: %d\n", signum);
+	printf("\nTerminating server with signal: %d\n", signum);
 	running = 0;
 }
 
@@ -213,16 +194,14 @@ int accept_connection(int server_sock){
 
   int client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &addr_len);
   if (client_sock == -1) {
-    // if (errno == EINTR){
-    //   return 0;
-    // }
-    perror("accept()");
-    //close(server_sock);
+    if (errno != EINTR){
+      perror("accept()");
+    }
     return -1;
   }
 
   char *client_ip = inet_ntoa(client_addr.sin_addr);
-  printf("Client connected! IP/port: %s\n", client_ip);
+  printf("Client connected! IP: %s\n", client_ip);
 
   return client_sock;
 
