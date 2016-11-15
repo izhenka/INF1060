@@ -11,10 +11,10 @@ server: server.c
 
 
 runs: server
-	./server jobs/haiku.job port
+	./server jobs/haiku.job 5432
 
-runc: klient
-	./klient ip port
+runc: client
+	./client ip 5432
 
 
 clean:

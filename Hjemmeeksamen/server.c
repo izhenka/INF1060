@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <netinet/in.h>
+#include <stdlib.h>
 
 int read_next_job(FILE* file, char* work_type, unsigned char* message_len, char* message);
 
@@ -23,6 +24,21 @@ int main(int argc, char const *argv[]) {
     return -1;
   }
 
+  int port = (int) strtol(argv[2], NULL, 10);
+  if(port == 0){
+    perror("Wrong port number");
+		return -1;
+  }
+
+
+  int my_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (my_socket == -1) {
+		perror("socket()");
+		return -1;
+	}
+  printf("Socket is set!\n");
+
+
   //if client connected
   char work_type;
   unsigned char message_len;
@@ -36,14 +52,7 @@ int main(int argc, char const *argv[]) {
   }
 
 
-  int my_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (my_socket == -1) {
-		perror("socket()");
-		return -1;
-	}
-
   close(my_socket);
-
 
   fclose(file);
   return 0;
