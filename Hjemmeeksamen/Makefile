@@ -16,6 +16,9 @@ runs: server
 runc: client
 	./client "37.191.141.137" 5432
 
+runc2: client
+	./client "127.0.0.1" 5432
+
 
 clean:
 	rm -f server client
