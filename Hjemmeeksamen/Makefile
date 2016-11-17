@@ -14,10 +14,10 @@ runs: server
 	./server jobs/haiku.job 5432
 
 runc: client
-	./client "37.191.141.137" 5432
+	./client "127.0.0.1" 5432
 
 runc2: client
-	./client "127.0.0.1" 5432
+	./client "37.191.141.137" 5432
 
 
 clean:
