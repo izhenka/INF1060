@@ -22,6 +22,7 @@ int send_req(char c, int num);
 int send_exit();
 int send_error_exit();
 int send_exit_after_req();
+void send_term_confirmation(int termination_type);
 
 //GLOBAL VARIABLES
 int g_sock; //client socket
@@ -33,6 +34,8 @@ int user_terminate = 0;
 
 //---*****------MAIN -----------****----------
 int main(int argc, char *argv[]){
+
+	//arguments checking
 	if (argc != 3) {
 		fprintf(stderr, "Usage: %s <ip> <port>\n", argv[0]);
 		return -1;
@@ -54,7 +57,24 @@ int main(int argc, char *argv[]){
 		exit(EXIT_FAILURE);
 	}
 
+	//forking 2 childs
+	pid_t pid1 = fork();
+	if (pid1 == -1) {
+		perror("fork()");
+		exit(EXIT_FAILURE);
+	}
 
+	if (pid1 == 0) { /* child 1 */
+		fprintf(stderr, "Hei, jeg er barn 1!\n");
+		return 0;
+
+	} else {		/* parent */
+		fprintf(stderr, "Jeg er parent. Fikk barn %d!\n", pid1);
+	}
+
+	return 0; //child-parent test
+
+	//server communication
 	g_sock = connect_to_server(argv[1], port);
 	if (g_sock == -1){
     exit(EXIT_FAILURE);
@@ -62,75 +82,10 @@ int main(int argc, char *argv[]){
 
 	int termination_type = 0;
 	commando_loop(&termination_type);
-
-	int conf_sent = 0;
-	switch (termination_type) {
-		case 1: 	conf_sent = send_exit(); break;
-		case 2: 	conf_sent = send_exit_after_req();
-							printf("Server is done with jobs and asked to terminate.\n");
-		 					break;
-		case -1: 	conf_sent = send_error_exit(); break;
-		default: 	conf_sent = send_error_exit();
-	}
-
-	printf("Confirmation of termination %s\n", conf_sent ? "has been sent successfully!" : "hasn't been sent.");
-
+	send_term_confirmation(termination_type);
 	close(g_sock);
+
 	return 0;
-
-	/*
-
-  pid_t pid = fork();
-  if (pid == -1){
-    perror("fork()");
-    exit(EXIT_FAILURE);
-  }
-
-  if (pid == 0){ //barneprosess
-    printf("Jeg er barn! Message: %s\n", argv[1]);
-    return 2;
-  }else{
-    int status;
-    wait(&status);
-    printf("Child terminated with status %d\n", WEXITSTATUS(status));
-  }
-
-*/
-
-	// int flags = MAP_SHARED | MAP_ANONYMOUS;
-	// char *mem2 = malloc(512);
-	// char *mem = mmap(NULL, 512, PROT_READ | PROT_WRITE, flags, -1, 0);
-	// if (mem == MAP_FAILED) {
-	// 	perror("mmap()");
-	// 	exit(EXIT_FAILURE);
-	// }
-  //
-	// printf("Yay: %p\n", mem);
-  //
-	// /* PID = Process ID */
-	// pid_t pid = fork();
-	// if (pid == -1) {
-	// 	perror("fork()");
-	// 	exit(EXIT_FAILURE);
-	// }
-  //
-	// if (pid == 0) { /* child */
-	// 	printf("Message: %s\n", mem);
-	// 	sleep(1);
-	// 	printf("Message: %s\n", mem);
-	// 	return 42;
-	// } else { /* parent */
-	// 	sleep(1);
-	// 	strcpy(mem, argv[1]);
-	// 	//sprintf(mem2+strlen(argv[1]), "test");
-	// 	//mem[strlen(argv[1])+strlen("test")] = 'a';
-	// 	int status;
-	// 	wait(&status);
-	// 	printf("Child terminated with status %d\n", WEXITSTATUS(status));
-	// 	printf("Parent message: %s\n", mem2);
-	// }
-  //
-	// return 0;
 }
 
 
@@ -142,6 +97,22 @@ int main(int argc, char *argv[]){
 void terminate(int signum){
 	printf("\nTerminating client (signal %d).\n", signum);
 	user_terminate = 1;
+}
+
+/* Sends confirmation of termination to server
+*  according to termination conditions
+*/
+void send_term_confirmation(int termination_type){
+	int conf_sent = 0;
+	switch (termination_type) {
+		case 1: 	conf_sent = send_exit(); break;
+		case 2: 	conf_sent = send_exit_after_req();
+							printf("Server is done with jobs and asked to terminate.\n");
+							break;
+		case -1: 	conf_sent = send_error_exit(); break;
+		default: 	conf_sent = send_error_exit();
+	}
+	printf("Confirmation of termination %s\n", conf_sent ? "has been sent successfully!" : "hasn't been sent.");
 }
 
 /* Establishes connection to server
