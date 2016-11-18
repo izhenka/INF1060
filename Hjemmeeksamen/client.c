@@ -3,60 +3,75 @@
 //GLOBAL VARIABLES
 int g_sock; //client socket
 int user_terminate = 0;
+int terminate_request_server = 0;
+int fds[2][2];
+
 
 int main(int argc, char *argv[]){
 
-	//arguments checking
-	if (argc != 3) {
-		fprintf(stderr, "Usage: %s <ip> <port>\n", argv[0]);
-		return -1;
-	}
-
-	int port = (int) strtol(argv[2], NULL, 10);
-	if(port == 0){
-		perror("Wrong port number");
-		return -1;
-	}
-
-	//Cntrl + c handler
-	struct sigaction sa;
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = terminate;
-
-	if (sigaction(SIGINT, &sa, NULL) != 0) {
-		perror("sigaction()");
+	int port = get_port_number(argc, argv);
+	if (!port){
 		exit(EXIT_FAILURE);
 	}
 
+	//setting pipes
+	 if (pipe(fds[0]) == -1) {
+		 perror("pipe()");
+		 exit(EXIT_FAILURE);
+	 }
+	 if (pipe(fds[1]) == -1) {
+		 perror("pipe()");
+		 exit(EXIT_FAILURE);
+	 }
 
-	//forking 2 childs
-	pid_t pid1 = fork();
-	if (pid1 == -1) {
-		perror("fork()");
-		exit(EXIT_FAILURE);
-	}
+	 pid_t pid1, pid2;
+	 int quit = 0;
 
-	if (pid1 == 0) { // child 1
-		fprintf(stdout, "Hei, jeg er barn 1!\n");
-		return 0;
+	 //forking 2 children
+	 switch(pid1 = fork()){
+		case -1: 		perror("fork()");
+		 						exit(EXIT_FAILURE);
 
-	} else {		// parent
-		fprintf(stdout, "Jeg er parent. Fikk barn %d!\n", pid1);
-	}
+		 case 0:		//CHILD 1
+		 						set_sig_handler(&terminate_ch1, SIGINT);
+								while (!user_terminate && !quit) {
+									quit = read_from_parent(1);
+								}
+								printf("Child 1 terminated x_x.\n");
+								break;
+		default:
 
+								switch(pid2 = fork()){
+									case -1: 		perror("fork()");
+															send_quit_to_childs();
+															wait(&pid1);
+															exit(EXIT_FAILURE);
 
+									case 0:		//CHILD 2
+														set_sig_handler(&terminate_ch2, SIGINT);
+														while (!user_terminate && !quit) {
+															quit = read_from_parent(2);
+														}
+														printf("Child 2 terminated x_x.\n");
+														break;
 
-	return 0; //child-parent test
+									default:	//PARENT
 
-	//server communication
-	g_sock = connect_to_server(argv[1], port);
-	if (g_sock == -1){
-    exit(EXIT_FAILURE);
-	}
+														set_sig_handler(&terminate, SIGINT);
 
-	int termination_type = commando_loop();
-	send_term_confirmation(termination_type);
-	close(g_sock);
+														g_sock = connect_to_server(argv[1], port);
+														if (g_sock == -1){
+															send_quit_to_childs();
+															wait(&pid1); wait(&pid2);
+													    exit(EXIT_FAILURE);
+														}
+
+														int termination_type = commando_loop();
+														wait(&pid1); wait(&pid2);
+														send_term_confirmation(termination_type);
+														close(g_sock);
+		}
+	 }
 
 	return 0;
 }
@@ -72,6 +87,18 @@ void terminate(int signum){
 	user_terminate = 1;
 }
 
+void terminate_ch1(int signum){
+	printf("\nChild 1: terminating(signal %d).\n", signum);
+	user_terminate = 1;
+}
+
+void terminate_ch2(int signum){
+	printf("\nChild 2: terminating(signal %d).\n", signum);
+	user_terminate = 1;
+}
+
+
+
 /* Sends confirmation of termination to server
 *  according to termination conditions
 */
@@ -79,9 +106,7 @@ void send_term_confirmation(int termination_type){
 	int conf_sent = 0;
 	switch (termination_type) {
 		case 1: 	conf_sent = send_exit(); break;
-		case 2: 	conf_sent = send_exit_after_req();
-							printf("Server is done with jobs and asked to terminate.\n");
-							break;
+		case 2: 	conf_sent = send_exit_after_req(); break;
 		case -1: 	conf_sent = send_error_exit(); break;
 		default: 	conf_sent = send_error_exit();
 	}
@@ -160,7 +185,7 @@ int commando_loop(){
       case 1: get_job(&exit); break;
       case 2: get_x_jobs(&exit); break;
       case 3: get_all_jobs(&exit); break;
-			case 4: send_exit(); exit = 1; break;
+			case 4: send_exit(); send_quit_to_childs(); exit = 1; break;
       default: printf("Ugyldig kommado!\n");
     }
   }
@@ -187,12 +212,15 @@ void get_job(int* exit){
 		*exit = -1;
 		return;
 	} else if (res == 2) {
+		printf("Server is done with jobs and asked to terminate.\n");
+		send_quit_to_childs();
 		*exit = 2;
 		return;
 	}
 
 	//Got message
 	printf("Message from server: %s\n", msg);
+	send_to_child(child_num(work_type), msg);
 
 	if (user_terminate){
 		*exit = -1;
@@ -234,11 +262,14 @@ void get_x_jobs(int* exit){
 			*exit = -1;
 			return;
 		} else if (res == 2) {
+			printf("Server is done with jobs and asked to terminate.\n");
+			send_quit_to_childs();
 			*exit = 2;
 			return;
 		}
 		//Got message
 		printf("Message from server: %s\n", msg);
+		send_to_child(child_num(work_type), msg);
 
 		if (user_terminate){
 			*exit = -1;
@@ -270,11 +301,14 @@ void get_all_jobs(int* exit){
 			*exit = -1;
 			return;
 		} else if (res == 2) {
+			printf("Server is done with jobs and asked to terminate.\n");
+			send_quit_to_childs();
 			*exit = 2;
 			return;
 		}
 		//Got message
 		printf("Message from server: %s\n", msg);
+		send_to_child(child_num(work_type), msg);
 
 		if (user_terminate){
 			*exit = -1;
@@ -361,4 +395,84 @@ int send_error_exit(){
 */
 int send_exit_after_req(){
 	return send_req('Q', 0);
+}
+
+/* Gets port number from arguments
+* returns
+*		port number if check is ok
+*		0 on error
+*/
+int get_port_number(int argc, char *argv[]){
+	//arguments checking
+	if (argc != 3) {
+		fprintf(stderr, "Usage: %s <ip> <port>\n", argv[0]);
+		return 0;
+	}
+
+	int port = (int) strtol(argv[2], NULL, 10);
+	if(port == 0){
+		perror("Wrong port number");
+		return 0;
+	}
+
+	return port;
+}
+
+/* Sends message msg
+*  to child nummer child_num
+*/
+void send_to_child(int child_num, char* msg){
+	close(fds[child_num-1][0]);
+	write(fds[child_num-1][1], msg, 256);
+}
+
+/* Reads and prints message from parent
+* to said child number
+* returns 1 if parents asks to quit
+* 				0 if not
+*/
+int read_from_parent(int child_num){
+	char readbuf[256] = {0};
+	close(fds[child_num-1][1]);
+	read(fds[child_num-1][0], readbuf,sizeof(readbuf));
+	if ((user_terminate) || (readbuf[0] == 'Q')){
+		return 1;
+	}
+	if (child_num == 1){
+		fprintf(stdout, "Child %d: %s\n", child_num, readbuf);
+	} else{
+		fprintf(stderr, "Child %d: %s\n", child_num, readbuf);
+	}
+
+	return 0;
+}
+
+/* Returns child number
+* from said work type
+*/
+int child_num(char work_type){
+	return ( work_type == 'O' ? 1 : 2);
+}
+
+/* Sets signal hadler
+* Input: function pointer to handler
+*					signal nummer
+*/
+void set_sig_handler(void (*handler) (int), int sig){
+	struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = handler;
+
+	if (sigaction(sig, &sa, NULL) != 0) {
+		perror("sigaction()");
+		exit(EXIT_FAILURE);
+	}
+}
+
+/* Sends quit-message to childs
+*/
+void send_quit_to_childs(){
+	char msg[1] = {'Q'};
+	send_to_child(1, msg);
+	send_to_child(2, msg);
 }

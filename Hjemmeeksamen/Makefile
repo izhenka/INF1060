@@ -11,13 +11,13 @@ server: server.c
 
 
 runs: server
-	./server jobs/haiku.job 5432
+	./server jobs/alice.job 5432
 
 runc: client
 	./client "127.0.0.1" 5432
 
 runc2: client
-	./client "37.191.141.137" 5432
+	./client "vfvjdnjvjn" 5432
 
 
 clean:
