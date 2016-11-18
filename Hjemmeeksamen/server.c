@@ -3,7 +3,21 @@
 int running = 1; //continue to accept connections
 int client_running = 0; //continue to exchange with client
 
-
+/*  PROTOCOL:
+*   receive:
+*     each message of 2 bytes: char and unsigned char
+*     'G'0 	- get 1 job
+*     'A'0 	- get all jobs
+*     'N'x  - get x jobs
+*     'T'0 	- client terminates normally
+*     'E'0	- client terminates with error
+*     'Q'0 	- client terminates normally after request from server. Server can terminate.
+*
+*   send:
+*     byte 1: job type (O/E/Q)
+*     byte 2: message length
+*     rest:   message
+*/
 int main(int argc, char const *argv[]) {
 
   //Cntrl + c handler

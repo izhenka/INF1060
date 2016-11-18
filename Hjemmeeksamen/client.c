@@ -2,11 +2,24 @@
 
 //GLOBAL VARIABLES
 int g_sock; //client socket
-int user_terminate = 0;
-int terminate_request_server = 0;
-int fds[2][2];
+int user_terminate = 0; //is set on 1 on Cntrl+C signal
+int fds[2][2]; //2 file descriptors
 
-
+/*  PROTOCOL:
+*   send:
+*     each message of 2 bytes: char and unsigned char
+*     'G'0 	- get 1 job
+*     'A'0 	- get all jobs
+*     'N'x  - get x jobs
+*     'T'0 	- client terminates normally (on user command 4)
+*     'E'0	- client terminates with error (or on Cntrl+c from user)
+*     'Q'0 	- client terminates normally after request from server. Server can terminate.
+*
+*   receive:
+*     byte 1: job type (O/E/Q)
+*     byte 2: message length [0..255]
+*     rest:   message to be printed
+*/
 int main(int argc, char *argv[]){
 
 	int port = get_port_number(argc, argv);
@@ -76,28 +89,26 @@ int main(int argc, char *argv[]){
 	return 0;
 }
 
-
-//OTHER FUNCTIONS
-
-/* SIGINT handler
-* terminates connections acception
+/* SIGINT handler: terminates client
 */
 void terminate(int signum){
 	printf("\nTerminating client (signal %d).\n", signum);
 	user_terminate = 1;
 }
 
+/* SIGINT handler: terminates child 1
+*/
 void terminate_ch1(int signum){
 	printf("\nChild 1: terminating(signal %d).\n", signum);
 	user_terminate = 1;
 }
 
+/* SIGINT handler: terminates child 2
+*/
 void terminate_ch2(int signum){
 	printf("\nChild 2: terminating(signal %d).\n", signum);
 	user_terminate = 1;
 }
-
-
 
 /* Sends confirmation of termination to server
 *  according to termination conditions
@@ -172,7 +183,8 @@ int commando_loop(){
     printf("\t3. Hent alle jobber fra serveren\n");
     printf("\t4. Avslutte programmet\n");
 
-    char res_s[256];
+		printf("Waiting for command from user..\n");
+	  char res_s[256];
     fgets(res_s, 256, stdin);
     int res = (int) strtol(res_s, NULL, 10);
 
@@ -295,7 +307,6 @@ void get_all_jobs(int* exit){
 	char msg[256] = { 0 };
 	char work_type;
 	for (;;){
-		//printf("receive_from_serv ...\n");
 		int res = receive_from_serv(msg, &work_type);
 		if (res == -1){
 			*exit = -1;
@@ -428,14 +439,14 @@ void send_to_child(int child_num, char* msg){
 
 /* Reads and prints message from parent
 * to said child number
-* returns 1 if parents asks to quit
+* returns 1 if parent asks to quit (got message "*quit*")
 * 				0 if not
 */
 int read_from_parent(int child_num){
 	char readbuf[256] = {0};
 	close(fds[child_num-1][1]);
 	read(fds[child_num-1][0], readbuf,sizeof(readbuf));
-	if ((user_terminate) || (readbuf[0] == 'Q')){
+	if ((user_terminate) || (strcmp(readbuf, "*quit*") == 0)){
 		return 1;
 	}
 	if (child_num == 1){
@@ -472,7 +483,7 @@ void set_sig_handler(void (*handler) (int), int sig){
 /* Sends quit-message to childs
 */
 void send_quit_to_childs(){
-	char msg[1] = {'Q'};
+	char msg[7] = "*quit*";
 	send_to_child(1, msg);
 	send_to_child(2, msg);
 }

@@ -11,7 +11,7 @@ server: server.c
 
 
 runs: server
-	./server jobs/alice.job 5432
+	./server jobs/linus.job 5432
 
 runc: client
 	./client "127.0.0.1" 5432
